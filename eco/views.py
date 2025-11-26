@@ -1,11 +1,14 @@
 from django.contrib import messages
 from django.shortcuts import redirect, render
+from django.views.decorators.csrf import csrf_protect
+from django.views.decorators.http import require_GET, require_http_methods, require_POST
 
 from .forms import LoginForm, RegisterForm
 from .services import api_get, api_post
 
 
 # Vista principal: Lista de libros
+@require_GET
 def index(request):
     """
     Obtiene la lista de libros desde la API y la renderiza.
@@ -27,6 +30,8 @@ def index(request):
     return render(request, 'index.html', context)
 
 # Autenticación: Login
+@require_http_methods(["GET", "POST"])
+@csrf_protect
 def login_view(request):
     """
     Maneja el login de usuarios.
@@ -69,6 +74,8 @@ def login_view(request):
     return render(request, 'login.html', {'form': form})
 
 
+@require_http_methods(["GET", "POST"])
+@csrf_protect
 def register_view(request):
     """
     Maneja el registro de nuevos usuarios.
@@ -90,21 +97,24 @@ def register_view(request):
             if response and response.status_code == 201:
                 messages.success(request, "Cuenta creada con éxito. Por favor inicia sesión.")
                 return redirect('login')
-            
-            # Intentamos mostrar el error específico que manda la API (ej: "Usuario ya existe")
-            error_msg = "Error al registrar usuario."
-            if response:
-                try:
-                    error_msg = str(response.json())
-                except Exception:
-                    pass
-            messages.error(request, error_msg)
+            else:
+                # Intentamos mostrar el error específico que manda la API (ej: "Usuario ya existe")
+                error_msg = "Error al registrar usuario."
+                if response:
+                    try:
+                        error_msg = str(response.json())
+                    except Exception:
+                        pass
+                messages.error(request, error_msg)
+        else:
+            form = RegisterForm()
     else:
         form = RegisterForm()
 
     return render(request, 'register.html', {'form': form})
 
 # Logout
+@require_POST
 def logout_view(request):
     """
     Maneja el cierre de sesión de usuarios.
@@ -117,6 +127,7 @@ def logout_view(request):
     return redirect('index')
 
 # Detalle de libro
+@require_GET
 def book_detail(request, book_id):
     """
     Muestra toda la info de un libro y permite marcarlo como favorito.
@@ -145,6 +156,7 @@ def book_detail(request, book_id):
     return render(request, 'book_detail.html', context)
 
 # Listar favoritos
+@require_GET
 def favorites_view(request):
     """
     Lista solo los libros marcados como favoritos por el usuario.
@@ -168,6 +180,8 @@ def favorites_view(request):
     return render(request, 'favorites.html', context)
 
 # Marcar/Desmarcar favorito (Toggle)
+@require_POST
+@csrf_protect
 def toggle_favorite(request, book_id):
     """
     Vista invisible que procesa el clic en 'Me gusta' y redirige.

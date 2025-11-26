@@ -53,6 +53,7 @@ class WebViewsTest(TestCase):
     def setUp(self):
         self.client = Client()
 
+    # ========== INDEX VIEW ==========
     def test_index_view(self):
         with patch('eco.views.api_get') as mock_api:
             mock_api.return_value = []
@@ -60,15 +61,30 @@ class WebViewsTest(TestCase):
             self.assertEqual(response.status_code, 200)
             self.assertTemplateUsed(response, 'index.html')
 
+    def test_index_view_api_error(self):
+        """Index debe manejar error de conexión con la API."""
+        with patch('eco.views.api_get') as mock_api:
+            mock_api.return_value = None
+            response = self.client.get(reverse('index'))
+            self.assertEqual(response.status_code, 200)
+            self.assertIn('books', response.context)
+            self.assertEqual(response.context['books'], [])
+
+    # ========== LOGIN VIEW ==========
     def test_login_view_get(self):
         response = self.client.get(reverse('login'))
         self.assertEqual(response.status_code, 200)
         self.assertTemplateUsed(response, 'login.html')
 
-    def test_register_view_get(self):
-        response = self.client.get(reverse('register'))
-        self.assertEqual(response.status_code, 200)
-        self.assertTemplateUsed(response, 'register.html')
+    def test_login_view_already_authenticated(self):
+        """Usuario ya autenticado debe redirigir a index."""
+        session = self.client.session
+        session['auth_token'] = 'test-token'
+        session.save()
+        
+        response = self.client.get(reverse('login'))
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, reverse('index'))
 
     def test_login_view_post_invalid_form(self):
         """Login con formulario inválido debe mostrar errores."""
@@ -77,9 +93,59 @@ class WebViewsTest(TestCase):
             'password': ''
         })
         self.assertEqual(response.status_code, 200)
-        # CORRECCIÓN: Ajustado al mensaje por defecto de Django en Inglés
-        # Si tu Django está en español, usa 'Este campo es obligatorio.'
         self.assertFormError(response.context['form'], 'username', 'This field is required.')
+
+    def test_login_view_post_success(self):
+        """Login exitoso debe guardar token en sesión y redirigir."""
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {'token': 'test-token-123'}
+        
+        with patch('eco.views.api_post') as mock_api:
+            mock_api.return_value = mock_response
+            
+            response = self.client.post(reverse('login'), {
+                'username': 'testuser',
+                'password': 'testpass'
+            })
+            
+            self.assertEqual(response.status_code, 302)
+            self.assertEqual(response.url, reverse('index'))
+            self.assertEqual(self.client.session['auth_token'], 'test-token-123')
+            self.assertEqual(self.client.session['user_data']['username'], 'testuser')
+
+    def test_login_view_post_invalid_credentials(self):
+        """Login con credenciales incorrectas debe mostrar error."""
+        mock_response = Mock()
+        mock_response.status_code = 401
+        
+        with patch('eco.views.api_post') as mock_api:
+            mock_api.return_value = mock_response
+            
+            response = self.client.post(reverse('login'), {
+                'username': 'wronguser',
+                'password': 'wrongpass'
+            })
+            
+            self.assertEqual(response.status_code, 200)
+            messages = list(response.context['messages'])
+            self.assertTrue(any('incorrectos' in str(m) for m in messages))
+
+    # ========== REGISTER VIEW ==========
+    def test_register_view_get(self):
+        response = self.client.get(reverse('register'))
+        self.assertEqual(response.status_code, 200)
+        self.assertTemplateUsed(response, 'register.html')
+
+    def test_register_view_already_authenticated(self):
+        """Usuario ya autenticado debe redirigir a index."""
+        session = self.client.session
+        session['auth_token'] = 'test-token'
+        session.save()
+        
+        response = self.client.get(reverse('register'))
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, reverse('index'))
 
     def test_register_view_post_success(self):
         """Registro exitoso debe redirigir al login."""
@@ -95,8 +161,6 @@ class WebViewsTest(TestCase):
                 'password': 'newpass123'
             })
             
-            # CORRECCIÓN: Verificamos solo el código 302, sin seguir el link
-            # (porque seguirlo requeriría mockear api_get también)
             self.assertEqual(response.status_code, 302)
             self.assertEqual(response.url, reverse('login'))
 
@@ -116,10 +180,142 @@ class WebViewsTest(TestCase):
             })
             
             self.assertEqual(response.status_code, 200)
-            # CORRECCIÓN: Buscamos el mensaje JSON crudo que devuelve la vista
             messages = list(response.context['messages'])
             self.assertIn('Usuario existe', str(messages[0]))
 
+    def test_register_view_post_invalid_form(self):
+        """Registro con formulario inválido debe mostrar errores."""
+        response = self.client.post(reverse('register'), {
+            'username': '',
+            'email': 'invalid-email',
+            'password': ''
+        })
+        self.assertEqual(response.status_code, 200)
+        self.assertFormError(response.context['form'], 'username', 'This field is required.')
+
+    # ========== LOGOUT VIEW ==========
+    def test_logout_view(self):
+        """Logout debe borrar sesión y redirigir."""
+        session = self.client.session
+        session['auth_token'] = 'test-token'
+        session['user_data'] = {'username': 'testuser'}
+        session.save()
+        
+        response = self.client.post(reverse('logout'))
+        
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, reverse('index'))
+        self.assertNotIn('auth_token', self.client.session)
+        self.assertNotIn('user_data', self.client.session)
+
+    # ========== BOOK DETAIL VIEW ==========
+    def test_book_detail_view_success(self):
+        """Book detail debe mostrar libro encontrado."""
+        mock_book = {
+            'id': 1,
+            'title': 'Test Book',
+            'authors': 'Test Author',
+            'description': 'Test description'
+        }
+        
+        with patch('eco.views.api_get') as mock_api:
+            mock_api.return_value = mock_book
+            
+            response = self.client.get(reverse('book_detail', args=[1]))
+            
+            self.assertEqual(response.status_code, 200)
+            self.assertTemplateUsed(response, 'book_detail.html')
+            self.assertEqual(response.context['book'], mock_book)
+            self.assertFalse(response.context['is_favorite'])
+
+    def test_book_detail_view_not_found(self):
+        """Book detail con libro no encontrado debe redirigir."""
+        with patch('eco.views.api_get') as mock_api:
+            mock_api.return_value = None
+            
+            response = self.client.get(reverse('book_detail', args=[999]))
+            
+            self.assertEqual(response.status_code, 302)
+            self.assertEqual(response.url, reverse('index'))
+
+    def test_book_detail_view_with_favorite(self):
+        """Book detail debe marcar libro como favorito si aplica."""
+        session = self.client.session
+        session['auth_token'] = 'test-token'
+        session.save()
+        
+        mock_book = {'id': 1, 'title': 'Test Book'}
+        mock_favorites = [{'id': 1, 'title': 'Test Book'}]
+        
+        with patch('eco.views.api_get') as mock_api:
+            mock_api.side_effect = [mock_book, mock_favorites]
+            
+            response = self.client.get(reverse('book_detail', args=[1]))
+            
+            self.assertEqual(response.status_code, 200)
+            self.assertTrue(response.context['is_favorite'])
+
+    def test_book_detail_view_not_favorite(self):
+        """Book detail debe marcar libro como no favorito si no está en lista."""
+        session = self.client.session
+        session['auth_token'] = 'test-token'
+        session.save()
+        
+        mock_book = {'id': 1, 'title': 'Test Book'}
+        mock_favorites = [{'id': 2, 'title': 'Other Book'}]
+        
+        with patch('eco.views.api_get') as mock_api:
+            mock_api.side_effect = [mock_book, mock_favorites]
+            
+            response = self.client.get(reverse('book_detail', args=[1]))
+            
+            self.assertEqual(response.status_code, 200)
+            self.assertFalse(response.context['is_favorite'])
+
+    # ========== FAVORITES VIEW ==========
+    def test_favorites_view_not_authenticated(self):
+        """Favorites sin autenticación debe redirigir a login."""
+        response = self.client.get(reverse('favorites'))
+        
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, reverse('login'))
+
+    def test_favorites_view_success(self):
+        """Favorites debe mostrar lista de favoritos del usuario."""
+        session = self.client.session
+        session['auth_token'] = 'test-token'
+        session['user_data'] = {'username': 'testuser'}
+        session.save()
+        
+        mock_favorites = [
+            {'id': 1, 'title': 'Favorite 1'},
+            {'id': 2, 'title': 'Favorite 2'}
+        ]
+        
+        with patch('eco.views.api_get') as mock_api:
+            mock_api.return_value = mock_favorites
+            
+            response = self.client.get(reverse('favorites'))
+            
+            self.assertEqual(response.status_code, 200)
+            self.assertTemplateUsed(response, 'favorites.html')
+            self.assertEqual(response.context['books'], mock_favorites)
+
+    def test_favorites_view_api_error(self):
+        """Favorites debe manejar error de API."""
+        session = self.client.session
+        session['auth_token'] = 'test-token'
+        session.save()
+        
+        with patch('eco.views.api_get') as mock_api:
+            mock_api.return_value = None
+            
+            response = self.client.get(reverse('favorites'))
+            
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.context['books'], [])
+
+    # ========== TOGGLE FAVORITE VIEW ==========
     def test_toggle_favorite_success(self):
         """Usuario autenticado puede agregar/quitar favoritos."""
         session = self.client.session
@@ -128,13 +324,37 @@ class WebViewsTest(TestCase):
         
         mock_response = Mock()
         mock_response.status_code = 200
-        mock_response.json.return_value = {'message': 'Ok'}
+        mock_response.json.return_value = {'message': 'Agregado a favoritos'}
         
         with patch('eco.views.api_post') as mock_api:
             mock_api.return_value = mock_response
             
-            response = self.client.get(reverse('toggle_favorite', args=[1]))
+            response = self.client.post(reverse('toggle_favorite', args=[1]))
             
-            # CORRECCIÓN: Verificamos redirección manualmente para evitar cargar la página destino
             self.assertEqual(response.status_code, 302)
             self.assertEqual(response.url, reverse('book_detail', args=[1]))
+
+    def test_toggle_favorite_not_authenticated(self):
+        """Toggle favorite sin autenticación debe redirigir a login."""
+        response = self.client.post(reverse('toggle_favorite', args=[1]))
+        
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, reverse('login'))
+
+    def test_toggle_favorite_api_error(self):
+        """Toggle favorite debe manejar error de API."""
+        session = self.client.session
+        session['auth_token'] = 'test-token'
+        session.save()
+        
+        mock_response = Mock()
+        mock_response.status_code = 500
+        
+        with patch('eco.views.api_post') as mock_api:
+            mock_api.return_value = mock_response
+            
+            response = self.client.post(reverse('toggle_favorite', args=[1]))
+            
+            self.assertEqual(response.status_code, 302)
+            messages = list(response.wsgi_request._messages)
+            self.assertTrue(any('No se pudo actualizar' in str(m) for m in messages))
