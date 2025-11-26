@@ -70,6 +70,16 @@ class WebViewsTest(TestCase):
             self.assertIn('books', response.context)
             self.assertEqual(response.context['books'], [])
 
+    def test_index_view_with_empty_list(self):
+        """Index con lista vacía debe mostrar mensaje de error."""
+        with patch('eco.views.api_get') as mock_api:
+            mock_api.return_value = []
+            response = self.client.get(reverse('index'))
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.context['books'], [])
+            messages = list(response.context['messages'])
+            self.assertTrue(any('No se pudo conectar' in str(m) for m in messages))
+
     # ========== LOGIN VIEW ==========
     def test_login_view_get(self):
         response = self.client.get(reverse('login'))
@@ -113,6 +123,24 @@ class WebViewsTest(TestCase):
             self.assertEqual(response.url, reverse('index'))
             self.assertEqual(self.client.session['auth_token'], 'test-token-123')
             self.assertEqual(self.client.session['user_data']['username'], 'testuser')
+
+    def test_login_view_post_no_token_in_response(self):
+        """Login con respuesta sin token debe mostrar error."""
+        mock_response = Mock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {}
+        
+        with patch('eco.views.api_post') as mock_api:
+            mock_api.return_value = mock_response
+            
+            response = self.client.post(reverse('login'), {
+                'username': 'testuser',
+                'password': 'testpass'
+            })
+            
+            self.assertEqual(response.status_code, 200)
+            messages = list(response.context['messages'])
+            self.assertTrue(any('Error al procesar' in str(m) for m in messages))
 
     def test_login_view_post_invalid_credentials(self):
         """Login con credenciales incorrectas debe mostrar error."""
@@ -238,6 +266,18 @@ class WebViewsTest(TestCase):
             self.assertEqual(response.status_code, 302)
             self.assertEqual(response.url, reverse('index'))
 
+    def test_book_detail_view_book_is_none(self):
+        """Book detail con book=None debe redirigir a index."""
+        with patch('eco.views.api_get') as mock_api:
+            mock_api.return_value = None
+            
+            response = self.client.get(reverse('book_detail', args=[1]))
+            
+            self.assertEqual(response.status_code, 302)
+            self.assertEqual(response.url, reverse('index'))
+            messages = list(response.wsgi_request._messages)
+            self.assertTrue(any('no encontrado' in str(m) for m in messages))
+
     def test_book_detail_view_with_favorite(self):
         """Book detail debe marcar libro como favorito si aplica."""
         session = self.client.session
@@ -266,6 +306,22 @@ class WebViewsTest(TestCase):
         
         with patch('eco.views.api_get') as mock_api:
             mock_api.side_effect = [mock_book, mock_favorites]
+            
+            response = self.client.get(reverse('book_detail', args=[1]))
+            
+            self.assertEqual(response.status_code, 200)
+            self.assertFalse(response.context['is_favorite'])
+
+    def test_book_detail_view_favorites_api_error(self):
+        """Book detail debe manejar error al obtener favoritos."""
+        session = self.client.session
+        session['auth_token'] = 'test-token'
+        session.save()
+        
+        mock_book = {'id': 1, 'title': 'Test Book'}
+        
+        with patch('eco.views.api_get') as mock_api:
+            mock_api.side_effect = [mock_book, None]
             
             response = self.client.get(reverse('book_detail', args=[1]))
             
@@ -315,6 +371,22 @@ class WebViewsTest(TestCase):
             self.assertEqual(response.status_code, 200)
             self.assertEqual(response.context['books'], [])
 
+    def test_favorites_view_empty_list(self):
+        """Favorites con lista vacía debe mostrar mensaje."""
+        session = self.client.session
+        session['auth_token'] = 'test-token'
+        session.save()
+        
+        with patch('eco.views.api_get') as mock_api:
+            mock_api.return_value = []
+            
+            response = self.client.get(reverse('favorites'))
+            
+            self.assertEqual(response.status_code, 200)
+            self.assertEqual(response.context['books'], [])
+            messages = list(response.context['messages'])
+            self.assertTrue(any('Error al cargar' in str(m) for m in messages))
+
     # ========== TOGGLE FAVORITE VIEW ==========
     def test_toggle_favorite_success(self):
         """Usuario autenticado puede agregar/quitar favoritos."""
@@ -352,6 +424,21 @@ class WebViewsTest(TestCase):
         
         with patch('eco.views.api_post') as mock_api:
             mock_api.return_value = mock_response
+            
+            response = self.client.post(reverse('toggle_favorite', args=[1]))
+            
+            self.assertEqual(response.status_code, 302)
+            messages = list(response.wsgi_request._messages)
+            self.assertTrue(any('No se pudo actualizar' in str(m) for m in messages))
+
+    def test_toggle_favorite_api_none_response(self):
+        """Toggle favorite debe manejar respuesta None de API."""
+        session = self.client.session
+        session['auth_token'] = 'test-token'
+        session.save()
+        
+        with patch('eco.views.api_post') as mock_api:
+            mock_api.return_value = None
             
             response = self.client.post(reverse('toggle_favorite', args=[1]))
             
