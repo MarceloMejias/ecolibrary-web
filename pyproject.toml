@@ -32,3 +32,28 @@ markers = [
     "integration: Integration tests",
     "slow: Slow running tests",
 ]
+
+# --- Configuración de Cobertura (Coverage) ---
+
+[tool.coverage.run]
+# Indica que la cobertura debe medirse desde la raíz actual
+source = ["."]
+# La lista negra de archivos que NO queremos medir
+omit = [
+    "*/migrations/*",       # Archivos autogenerados de base de datos
+    "manage.py",            # Script de entrada
+    "*/settings.py",        # Configuración
+    "*/wsgi.py",            # Entrada del servidor
+    "*/asgi.py",            # Entrada asíncrona
+    "*/tests.py",           # No tiene sentido medir el test en sí mismo
+    "*/test_*.py",          # Patrones de archivos de test
+    "*/__init__.py",        # Archivos vacíos de paquete
+    ".venv/*",              # CRÍTICO: Ignora el entorno virtual de uv
+    "*/site-packages/*"     # Ignora librerías de terceros (Django, Requests, etc.)
+]
+
+[tool.coverage.report]
+# No fallar si no encuentra algún archivo fuente
+ignore_errors = true
+# Opcional: Excluir líneas vacías del reporte
+skip_empty = true
