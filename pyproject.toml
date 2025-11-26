@@ -46,11 +46,12 @@ markers = [
 
 [tool.coverage.run]
 # Indica que la cobertura debe medirse desde la raíz actual
-source = ["."]
+source = ["eco"]
 # La lista negra de archivos que NO queremos medir
 omit = [
     "*/migrations/*",       # Archivos autogenerados de base de datos
     "manage.py",            # Script de entrada
+    "portal/*",             # Configuración del proyecto Django
     "*/settings.py",        # Configuración
     "*/wsgi.py",            # Entrada del servidor
     "*/asgi.py",            # Entrada asíncrona
