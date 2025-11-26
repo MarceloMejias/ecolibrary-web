@@ -27,6 +27,15 @@ addopts = [
     "-v",
 ]
 testpaths = ["eco"]
+norecursedirs = [
+    ".venv",
+    "venv",
+    "env",
+    "site-packages",
+    "migrations",
+    "__pycache__",
+    "*.egg-info",
+]
 markers = [
     "unit: Unit tests",
     "integration: Integration tests",
