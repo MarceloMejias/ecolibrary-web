@@ -1,0 +1,6 @@
+projectKey=EcoLibrary
+serverUrl=http://localhost:9010
+serverVersion=25.11.0.114957
+dashboardUrl=http://localhost:9010/dashboard?id=EcoLibrary
+ceTaskId=f89a706b-d90e-43bf-9149-89befb91027f
+ceTaskUrl=http://localhost:9010/api/ce/task?id=f89a706b-d90e-43bf-9149-89befb91027f
