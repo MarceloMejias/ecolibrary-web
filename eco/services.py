@@ -1,6 +1,6 @@
 import os
+
 import requests
-from django.conf import settings
 
 # Leemos la URL interna definida en docker-compose (http://api:8000)
 API_BASE_URL = os.environ.get('API_INTERNAL_URL', 'http://api:8000')

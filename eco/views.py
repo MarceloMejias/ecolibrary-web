@@ -68,7 +68,7 @@ def login_view(request):
 
     return render(request, 'login.html', {'form': form})
 
-# Registro de nuevos usuarios
+
 def register_view(request):
     """
     Maneja el registro de nuevos usuarios.
@@ -90,27 +90,27 @@ def register_view(request):
             if response and response.status_code == 201:
                 messages.success(request, "Cuenta creada con éxito. Por favor inicia sesión.")
                 return redirect('login')
-            else:
-                # Intentamos mostrar el error específico que manda la API (ej: "Usuario ya existe")
-                error_msg = "Error al registrar usuario."
-                if response:
-                    try:
-                        error_msg = str(response.json())
-                    except:
-                        pass
-                messages.error(request, error_msg)
+            
+            # Intentamos mostrar el error específico que manda la API (ej: "Usuario ya existe")
+            error_msg = "Error al registrar usuario."
+            if response:
+                try:
+                    error_msg = str(response.json())
+                except Exception:
+                    pass
+            messages.error(request, error_msg)
     else:
         form = RegisterForm()
 
     return render(request, 'register.html', {'form': form})
 
 # Logout
+def logout_view(request):
     """
     Maneja el cierre de sesión de usuarios.
     1. Borra el Token y datos de usuario de la sesión.
     2. Redirige al índice con mensaje de confirmación.
     """
-def logout_view(request):
     # Borramos toda la información de la sesión (Token y datos de usuario)
     request.session.flush()
     messages.info(request, "Has cerrado sesión correctamente.")
