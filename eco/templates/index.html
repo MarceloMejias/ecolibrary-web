@@ -1,0 +1,49 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>Catálogo de Libros</h1>
+    </div>
+
+<div class="row row-cols-1 row-cols-md-3 g-4">
+    {% for book in books %}
+    <div class="col">
+        <div class="card h-100 shadow-sm hover-shadow transition">
+            <div style="height: 250px; overflow: hidden; background-color: #f8f9fa;" class="d-flex align-items-center justify-content-center">
+                {% if book.cover_url %}
+                    <img src="{{ book.cover_url }}" class="card-img-top h-100 w-100" style="object-fit: cover;" alt="{{ book.title }}">
+                {% else %}
+                    <span class="text-muted fs-1">📖</span>
+                {% endif %}
+            </div>
+
+            <div class="card-body">
+                <h5 class="card-title text-truncate" title="{{ book.title }}">{{ book.title }}</h5>
+                <h6 class="card-subtitle mb-2 text-muted">{{ book.author }}</h6>
+                <span class="badge bg-secondary mb-2">{{ book.category }}</span>
+                <p class="card-text small text-muted">
+                    {{ book.description|truncatechars:100 }}
+                </p>
+            </div>
+
+            <div class="card-footer bg-white border-top-0 pb-3">
+                <div class="d-grid">
+                    <a href="{% url 'book_detail' book.id %}" class="btn btn-outline-success">
+                        Ver Detalle
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% empty %}
+    <div class="col-12 text-center py-5">
+        <div class="alert alert-warning" role="alert">
+            <h4 class="alert-heading">¡El catálogo está vacío!</h4>
+            <p>Parece que no hay libros registrados en el sistema.</p>
+            <hr>
+            <p class="mb-0">Accede al panel de administración de la API para agregar nuevos títulos.</p>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}

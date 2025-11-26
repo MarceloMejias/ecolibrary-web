@@ -1,0 +1,48 @@
+{% extends 'base.html' %}
+{% block content %}
+<div class="card mt-4">
+    <div class="row g-0">
+        <div class="col-md-4 text-center p-3">
+            {% if book.cover_url %}
+                <img src="{{ book.cover_url }}" class="img-fluid rounded-start" alt="...">
+            {% else %}
+                <div class="bg-secondary text-white p-5">Sin Imagen</div>
+            {% endif %}
+        </div>
+        <div class="col-md-8">
+            <div class="card-body">
+                <h2 class="card-title">{{ book.title }}</h2>
+                <h4 class="text-muted">{{ book.author }}</h4>
+                <p class="card-text mt-3">{{ book.description }}</p>
+                
+                <hr>
+                <dl class="row">
+                    <dt class="col-sm-3">Categoría</dt> <dd class="col-sm-9">{{ book.category }}</dd>
+                    <dt class="col-sm-3">Año</dt> <dd class="col-sm-9">{{ book.publication_year }}</dd>
+                </dl>
+
+                <div class="mt-4">
+                    {% if request.session.auth_token %}
+                        <a href="{% url 'toggle_favorite' book.id %}" 
+                           class="btn {% if is_favorite %}btn-danger{% else %}btn-outline-danger{% endif %}">
+                            {% if is_favorite %}
+                                <i class="fas fa-heart"></i> Quitar de Favoritos
+                            {% else %}
+                                <i class="far fa-heart"></i> Agregar a Favoritos
+                            {% endif %}
+                        </a>
+                    {% else %}
+                        <a href="{% url 'login' %}" class="btn btn-secondary">
+                            <i class="fas fa-sign-in-alt"></i> Inicia sesión para agregar a favoritos
+                        </a>
+                    {% endif %}
+                    
+                    <a href="{% url 'index' %}" class="btn btn-link">
+                        <i class="fas fa-arrow-left"></i> Volver al catálogo
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
