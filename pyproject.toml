@@ -53,6 +53,9 @@ omit = [
     "manage.py",            # Script de entrada
     "portal/*",             # Configuración del proyecto Django
     "*/settings.py",        # Configuración
+    "portal/settings.py",  # Configuración principal
+    "eco/tests.py",      # Tests de la app eco
+    "*/test_*.py",         # Patrones de archivos de test
     "*/wsgi.py",            # Entrada del servidor
     "*/asgi.py",            # Entrada asíncrona
     "*/tests.py",           # No tiene sentido medir el test en sí mismo
