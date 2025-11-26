@@ -1,14 +1,16 @@
 # api/Dockerfile (y web/Dockerfile)
 FROM python:3.13-slim-bookworm
 
-# Instalamos herramientas básicas
-RUN apt-get update && apt-get install -y --no-install-recommends curl && rm -rf /var/lib/apt/lists/*
+# Instalamos herramientas básicas y creamos usuario no privilegiado
+RUN apt-get update && apt-get install -y --no-install-recommends curl && \
+    rm -rf /var/lib/apt/lists/* && \
+    groupadd -r appuser && \
+    useradd -r -g appuser appuser
 
 # Copiamos uv
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /bin/uv
 
-# Creamos usuario no privilegiado para mayor seguridad
-RUN groupadd -r appuser && useradd -r -g appuser appuser
+
 
 # --- CAMBIO CRUCIAL ---
 # Creamos el entorno virtual en /opt/venv (fuera de /app)
@@ -26,10 +28,10 @@ COPY pyproject.toml uv.lock* ./
 RUN uv sync --frozen --no-install-project
 
 COPY . .
-RUN uv sync --frozen
 
-# Cambiamos permisos de /app y /opt/venv al usuario no privilegiado
-RUN chown -R appuser:appuser /app /opt/venv
+# Instalamos proyecto y cambiamos permisos al usuario no privilegiado
+RUN uv sync --frozen && \
+    chown -R appuser:appuser /app /opt/venv
 
 # Cambiamos al usuario no privilegiado
 USER appuser
