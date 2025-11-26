@@ -52,17 +52,19 @@ omit = [
     "*/migrations/*",       # Archivos autogenerados de base de datos
     "manage.py",            # Script de entrada
     "portal/*",             # Configuración del proyecto Django
-    "*/settings.py",        # Configuración
+    "**/settings.py",        # Configuración
+    "settings.py",         # Configuración principal
     "portal/settings.py",  # Configuración principal
     "eco/tests.py",      # Tests de la app eco
-    "*/test_*.py",         # Patrones de archivos de test
-    "*/wsgi.py",            # Entrada del servidor
-    "*/asgi.py",            # Entrada asíncrona
-    "*/tests.py",           # No tiene sentido medir el test en sí mismo
-    "*/test_*.py",          # Patrones de archivos de test
-    "*/__init__.py",        # Archivos vacíos de paquete
+    "**/test_*.py",         # Patrones de archivos de test
+    "**/wsgi.py",            # Entrada del servidor
+    "**/asgi.py",            # Entrada asíncrona
+    "**/tests.py",           # No tiene sentido medir el test en sí mismo
+    "**/test_*.py",          # Patrones de archivos de test
+    "**/__init__.py",        # Archivos vacíos de paquete
     ".venv/*",              # CRÍTICO: Ignora el entorno virtual de uv
-    "*/site-packages/*"     # Ignora librerías de terceros (Django, Requests, etc.)
+    "urls.py",              # Rutas del proyecto
+    "**/site-packages/*"     # Ignora librerías de terceros (Django, Requests, etc.)
 ]
 
 [tool.coverage.report]
